@@ -23,6 +23,7 @@
 #define USE_CRC_HASH
 #define USE_PCLMUL_CRC
 #define USE_MEDIUM
+#define USE_QUICK
 
 extern int x86_cpu_has_sse2;
 extern int x86_cpu_has_sse42;

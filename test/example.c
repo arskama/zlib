@@ -7,6 +7,7 @@
 
 #include "zlib.h"
 #include <stdio.h>
+#include <ctype.h>
 
 #ifdef STDC
 #  include <string.h>
@@ -487,6 +488,184 @@ void test_dict_deflate(compr, comprLen)
     err = deflateEnd(&c_stream);
     CHECK_ERR(err, "deflateEnd");
 }
+/* ==========================================================================
+ * Test deflateWindowBits8()
+ */
+void test_deflateWindowBits8()
+{
+    printf("------------------------- %s ----------------------------\n", __FUNCTION__);
+    int err;
+    z_stream d_stream; /* decompression stream */
+    const size_t kFixedBufferSize = 4096;
+    char fixed_buffer_[kFixedBufferSize];
+    char solution[] = {'r','\xce','(', '\xca', '\xcf', '\xcd', ',', '\xcd', 'M', '\x1c', '\xe1', '\xc0', '\x39', '\xa3', '(', '?', '7', '\xb3', '\x34' ,'\x17', '\x00'};
+    int error = 0;
+    int compression_level = 3;
+
+    for(int i = 0; i <21; i++) {
+      if (isprint(solution[i]))
+        printf("Expected [%d] = '%c'\n", i, solution[i]);
+      else
+        printf("Expected [%d] = '\\x%02x'\n", i, (unsigned char) solution[i]);
+    }
+
+      
+    int window_bits = -9;
+//    window_bits = -std::max(window_bits, 9);
+    memset(&d_stream, 0, sizeof(z_stream));
+
+    int result = deflateInit2(&d_stream,
+			      compression_level,		//level 1 = QUICK, 3 = FAST, 5  = MEDIUM, 8 = SLOW
+			      Z_DEFLATED,
+			      window_bits,
+			      8,
+			      Z_DEFAULT_STRATEGY);
+
+    CHECK_ERR(result, "deflateInit2");
+    if (result != Z_OK) {
+      fprintf(stderr, "failed to Init\n");
+      return ;
+    }
+    const char input[] = "ChromiumaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaChromium";
+    d_stream.next_in = (Bytef*)input;
+    d_stream.avail_in = sizeof(input) -1;
+    printf("size %d\n",d_stream.avail_in);
+
+
+// Z_NO_FLUSH (AddBytes)
+    result = Z_OK;
+    do {
+      d_stream.next_out = (Bytef*)(&fixed_buffer_[0]);
+      d_stream.avail_out = kFixedBufferSize;
+      result = deflate(&d_stream, Z_NO_FLUSH);
+      size_t size = kFixedBufferSize - d_stream.avail_out;
+   } while (result == Z_OK);
+   if (result != Z_BUF_ERROR)
+    printf("AddBytes: Result is = %d\n", result);
+
+// Z_SYNC_FLUSH (Finish)
+    d_stream.next_in = NULL;
+    d_stream.avail_in = 0;
+    result = Z_OK;
+    do {
+      d_stream.next_out = (Bytef*)(&fixed_buffer_[0]);
+      d_stream.avail_out = kFixedBufferSize;
+      result = deflate(&d_stream, Z_SYNC_FLUSH);
+      size_t size = kFixedBufferSize - d_stream.avail_out;
+
+   } while (result == Z_OK);
+   if (result != Z_BUF_ERROR)
+     printf("Finish Result is = %d\n", result);
+
+   for(int i = 0; i <21; i++) {
+      if (fixed_buffer_[i] != solution[i]) {
+       if (isprint(solution[i]))
+         printf("ERROR!!! Expected[%d] = '%c' Vs TestOutput[%d] = '%c'\n", i, solution[i], i, fixed_buffer_[i]);
+       else
+         printf("ERROR!!! Expected[%d] = '\\x%02x' Vs TestOutput[%d] = '\\x%02x'\n", i, (unsigned char) solution[i], i, (unsigned char) fixed_buffer_[i]);
+
+       error = -1;
+      }
+   }
+   if (error) {
+     printf("ERROR: Expect equality between expected and test Output\n");
+     printf("TEST %s FAILED!!!! (compression level %d)\n", __FUNCTION__, compression_level);
+   } else {
+     printf("Test %s is Passing! (compression level %d)\n", __FUNCTION__, compression_level);
+   }
+    err = deflateEnd(&d_stream);
+    printf("------------------------- END: %s ----------------------------\n", __FUNCTION__);
+}
+
+/* ==========================================================================
+ * Test deflateWindowBits10()
+ */
+void test_deflateWindowBits10()
+{
+    printf("------------------------- START: %s ----------------------------\n", __FUNCTION__);
+    int err;
+    z_stream d_stream; /* decompression stream */
+    const size_t kFixedBufferSize = 4096;
+    char fixed_buffer_[kFixedBufferSize];
+    char solution[] = {'r', '\xce', '(', '\xca', '\xcf', '\xcd', ',', '\xcd', 'M', '\x1c', '\xe1', '\xc0', '\x19', '\x1a', '\x0e', '\0', '\0'};
+    int error = 0;
+    int compression_level = 3;
+
+    for(int i = 0; i <17; i++) {
+      if (isprint(solution[i]))
+        printf("Expected [%d] = '%c'\n", i, solution[i]);
+      else
+        printf("Expected [%d] = '\\x%02x'\n", i, (unsigned char) solution[i]);
+    }
+
+    int window_bits = -10;
+//    window_bits = -std::max(window_bits, 9);
+    memset(&d_stream, 0, sizeof(z_stream));
+
+    int result = deflateInit2(&d_stream,
+			      compression_level, //level 1 = QUICK, 3 = FAST, 5  = MEDIUM, 8 = SLOW
+			      Z_DEFLATED,
+			      window_bits,
+			      8,
+			      Z_DEFAULT_STRATEGY);
+
+    CHECK_ERR(result, "deflateInit2");
+    if (result != Z_OK) {
+      fprintf(stderr, "failed to Init\n");
+      return ;
+    }
+    const char input[] = "ChromiumaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaaChromium";
+    d_stream.next_in = (Bytef*)input;
+    d_stream.avail_in = sizeof(input) -1;
+    printf("size %d\n",d_stream.avail_in);
+
+
+// Z_NO_FLUSH (AddBytes)
+    result = Z_OK;
+    do {
+      d_stream.next_out = (Bytef*)(&fixed_buffer_[0]);
+      d_stream.avail_out = kFixedBufferSize;
+      result = deflate(&d_stream, Z_NO_FLUSH);
+      size_t size = kFixedBufferSize - d_stream.avail_out;
+   } while (result == Z_OK);
+   if (result != Z_BUF_ERROR)
+    printf("Result AddBytes is = %d\n", result);
+
+// Z_SYNC_FLUSH (Finish)
+    d_stream.next_in = NULL;
+    d_stream.avail_in = 0;
+    result = Z_OK;
+    do {
+      d_stream.next_out = (Bytef*)(&fixed_buffer_[0]);
+      d_stream.avail_out = kFixedBufferSize;
+      result = deflate(&d_stream, Z_SYNC_FLUSH);
+      size_t size = kFixedBufferSize - d_stream.avail_out;
+      printf("size is %ld\n", size);
+   } while (result == Z_OK);
+   if (result != Z_BUF_ERROR)
+    printf("Result Finish is = %d\n", result);
+
+   for(int i = 0; i <17; i++) {
+      if (fixed_buffer_[i] != solution[i]) {
+       if (isprint(solution[i]))
+         printf("ERROR!!! Expected[%d] = '%c' Vs TestOutput[%d] = '%c'\n", i, solution[i], i, fixed_buffer_[i]);
+       else
+         printf("ERROR!!! Expected[%d] = '\\x%02x' Vs TestOutput[%d] = '\\x%02x'\n", i, (unsigned char) solution[i], i, (unsigned char) fixed_buffer_[i]);
+
+       error = -1;
+      }
+   }
+   if (error) {
+     printf("ERROR: Expect equality between expected and test Output\n");
+     printf("TEST %s FAILED!!!! (compression level %d),\n", __FUNCTION__, compression_level);
+   } else {
+     printf("Test %s is Passing! (compression level %d)\n", __FUNCTION__, compression_level);
+   }
+
+   err = deflateEnd(&d_stream);
+   printf("------------------------- END: %s ----------------------------\n", __FUNCTION__);
+}
+
 
 /* ===========================================================================
  * Test inflate() with a preset dictionary
@@ -583,6 +762,8 @@ int main(argc, argv)
 #endif
 
     test_deflate(compr, comprLen);
+    test_deflateWindowBits8();
+    test_deflateWindowBits10();
     test_inflate(compr, comprLen, uncompr, uncomprLen);
 
     test_large_deflate(compr, comprLen, uncompr, uncomprLen);
